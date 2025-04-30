@@ -5,6 +5,7 @@ import { getChatById, getMessagesByChatId } from '@/lib/db/queries';
 import { DataStreamHandler } from '@/components/data-stream-handler';
 import type { DBMessage } from '@/lib/db/schema';
 import type { UIMessage } from 'ai';
+import { PrivyClient } from '@privy-io/server-auth';
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -16,8 +17,21 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   }
 
   let user: { userId: string } | undefined;
+  const cookieStore = await cookies();
+  const userToken = cookieStore.get('privy-token');
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+  const appSecret = process.env.PRIVY_APP_SECRET;
 
-  user = { userId: 'test' }; // TODO: remove this
+  if (userToken && appId && appSecret) {
+    try {
+      const privy = new PrivyClient(appId, appSecret);
+      const userClaims = await privy.verifyAuthToken(userToken.value);
+      user = { userId: userClaims.userId };
+    } catch (error) {
+      // User is not authenticated
+      console.error('Privy authentication error:', error);
+    }
+  }
 
   console.log({ id, chat, user });
 
@@ -45,7 +59,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       createdAt: message.createdAt,
     }));
   }
-  const cookieStore = await cookies();
+
   const chatModelFromCookie = cookieStore.get('chat-model');
 
   if (!chatModelFromCookie) {

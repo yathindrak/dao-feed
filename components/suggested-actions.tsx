@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Button } from './ui/button';
 import { memo } from 'react';
 import type { UseChatHelpers } from '@ai-sdk/react';
+import { usePrivy } from '@privy-io/react-auth';
 
 interface SuggestedActionsProps {
   chatId: string;
@@ -11,8 +12,13 @@ interface SuggestedActionsProps {
 }
 
 function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
+  const { authenticated, login } = usePrivy();
+
   const handleAction = (message: string) => {
-    // TODO: return if not authenticated
+    if (!authenticated) {
+      login();
+      return;
+    }
     append({
       role: 'user',
       content: message,

@@ -1,3 +1,5 @@
+import { cookies } from 'next/headers';
+import { PrivyClient } from '@privy-io/server-auth';
 import { getChatById, getVotesByChatId, voteMessage } from '@/lib/db/queries';
 
 export async function GET(request: Request) {
@@ -8,8 +10,19 @@ export async function GET(request: Request) {
     return new Response('chatId is required', { status: 400 });
   }
 
+  const cookieStore = await cookies();
+  const userToken = cookieStore.get('privy-token');
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+  const appSecret = process.env.PRIVY_APP_SECRET;
+
+  if (!userToken || !appId || !appSecret) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   try {
-    const user = { userId: 'test' }; // TODO: remove this
+    const privy = new PrivyClient(appId, appSecret);
+    const userClaims = await privy.verifyAuthToken(userToken.value);
+    const user = { userId: userClaims.userId };
 
     const chat = await getChatById({ id: chatId });
 
@@ -41,8 +54,19 @@ export async function PATCH(request: Request) {
     return new Response('messageId and type are required', { status: 400 });
   }
 
+  const cookieStore = await cookies();
+  const userToken = cookieStore.get('privy-token');
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+  const appSecret = process.env.PRIVY_APP_SECRET;
+
+  if (!userToken || !appId || !appSecret) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   try {
-    const user = { userId: 'test' }; // TODO: remove this
+    const privy = new PrivyClient(appId, appSecret);
+    const userClaims = await privy.verifyAuthToken(userToken.value);
+    const user = { userId: userClaims.userId };
 
     const chat = await getChatById({ id: chatId });
 

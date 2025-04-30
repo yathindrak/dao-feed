@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { usePrivy } from '@privy-io/react-auth';
 
 import { PlusIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
@@ -18,12 +19,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 export function AppSidebar() {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
-  const authenticated = true;
-  const user = { userId: 'test' }; // TODO: remove this
+  const { authenticated, login, user } = usePrivy();
+
   const handleNewChat = () => {
     setOpenMobile(false);
     if (!authenticated) {
-      //login
+      login();
     } else {
       router.push('/');
       router.refresh();

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import Providers from './providers';
+import AuthCheck from '@/components/auth-check';
 
 import './globals.css';
 
@@ -78,8 +79,10 @@ export default async function RootLayout({
           disableTransitionOnChange
         >
           <Toaster position="top-center" />
-
-          {children}
+          <Providers>
+            <AuthCheck />
+            {children}
+          </Providers>
         </ThemeProvider>
       </body>
     </html>

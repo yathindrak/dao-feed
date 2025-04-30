@@ -6,6 +6,7 @@ import type React from 'react';
 import { useRef, useEffect, useCallback, memo } from 'react';
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
+import { usePrivy } from '@privy-io/react-auth';
 
 import { ArrowUpIcon, StopIcon } from './icons';
 import { Button } from './ui/button';
@@ -38,6 +39,7 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
+  const { authenticated, login } = usePrivy();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -86,7 +88,10 @@ function PureMultimodalInput({
   };
 
   const submitForm = useCallback(() => {
-    // TODO: return if not authenticated
+    if (!authenticated) {
+      login();
+      return;
+    }
     console.log(`submitting form for chat ${chatId}`);
 
     window.history.replaceState({}, '', `/chat/${chatId}`);
@@ -99,7 +104,7 @@ function PureMultimodalInput({
     if (width && width > 768) {
       textareaRef.current?.focus();
     }
-  }, [handleSubmit, setLocalStorageInput, width, chatId]);
+  }, [handleSubmit, setLocalStorageInput, width, chatId, authenticated, login]);
 
   return (
     <div className="relative w-full flex flex-col gap-4">

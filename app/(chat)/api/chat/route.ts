@@ -21,6 +21,7 @@ import { getWeather } from '@/lib/ai/tools/get-weather';
 import { isProductionEnvironment } from '@/lib/constants';
 import { aiProvider } from '@/lib/ai/providers';
 import { cookies } from 'next/headers';
+import { PrivyClient } from '@privy-io/server-auth';
 import { type NextRequest, NextResponse } from 'next/server';
 
 export const maxDuration = 60;
@@ -39,6 +40,10 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    const privy = new PrivyClient(appId, appSecret);
+    const userClaims = await privy.verifyAuthToken(userToken.value);
+    const user = { userId: userClaims.userId };
+    console.log({ userClaims });
     const body = await req.json();
     console.log({ bodyMsg: body.message });
     // {
@@ -56,8 +61,6 @@ export async function POST(req: NextRequest) {
     // if (!message.content && (!message.parts || message.parts.length === 0)) {
     //   return new Response('Message content is required', { status: 400 });
     // }
-
-    const user = { userId: 'test' }; // TODO: remove this
 
     const messageCount = await getMessageCountByUserId({
       id: user.userId,
@@ -234,8 +237,19 @@ export async function DELETE(request: Request) {
     return new Response('Not Found', { status: 404 });
   }
 
+  const cookieStore = await cookies();
+  const userToken = cookieStore.get('privy-token');
+  const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
+  const appSecret = process.env.PRIVY_APP_SECRET;
+
+  if (!userToken || !appId || !appSecret) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   try {
-    const user = { userId: 'test' }; // TODO: remove this
+    const privy = new PrivyClient(appId, appSecret);
+    const userClaims = await privy.verifyAuthToken(userToken.value);
+    const user = { userId: userClaims.userId };
 
     const chat = await getChatById({ id });
 
