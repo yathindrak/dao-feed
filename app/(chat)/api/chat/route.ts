@@ -4,7 +4,6 @@ import {
   createDataStreamResponse,
   smoothStream,
   streamText,
-  type UIMessage,
 } from 'ai';
 import { systemPrompt } from '@/lib/ai/prompts';
 import {
@@ -29,6 +28,9 @@ const maxMessagesPerDay = 100;
 
 export async function POST(req: NextRequest) {
   try {
+    const headers = req.headers;
+    const userAddress = headers.get('x-privy-address');
+
     const cookieStore = await cookies();
     const userToken = cookieStore.get('privy-token');
     const appId = process.env.NEXT_PUBLIC_PRIVY_APP_ID;
@@ -42,10 +44,10 @@ export async function POST(req: NextRequest) {
 
     const privy = new PrivyClient(appId, appSecret);
     const userClaims = await privy.verifyAuthToken(userToken.value);
-    const user = { userId: userClaims.userId };
-    console.log({ userClaims });
+
+    const userId = userClaims.userId;
+
     const body = await req.json();
-    console.log({ bodyMsg: body.message });
     // {
     //   bodyMsg: {
     //     id: 'ac19a850-2762-4dc2-9718-7b5efd5870e6',
@@ -58,12 +60,12 @@ export async function POST(req: NextRequest) {
     const message = body.message;
 
     // Ensure message has content
-    // if (!message.content && (!message.parts || message.parts.length === 0)) {
-    //   return new Response('Message content is required', { status: 400 });
-    // }
+    if (!message.content && (!message.parts || message.parts.length === 0)) {
+      return new Response('Message content is required', { status: 400 });
+    }
 
     const messageCount = await getMessageCountByUserId({
-      id: user.userId,
+      id: userId,
       differenceInHours: 24,
     });
     console.log('messageCount', messageCount);
@@ -93,11 +95,12 @@ export async function POST(req: NextRequest) {
       // Create the chat first
       await saveChat({
         id: body.id,
-        userId: user.userId,
+        userId: userId,
         title,
+        address: userAddress ?? '',
       });
     } else {
-      if (chat.userId !== user.userId) {
+      if (chat.userId !== userId) {
         return new Response('Forbidden', { status: 403 });
       }
     }

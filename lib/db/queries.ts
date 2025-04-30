@@ -23,19 +23,25 @@ import { chat, message, vote, type DBMessage, type Chat, user } from './schema';
 const client = postgres(process.env.POSTGRES_URL!);
 const db = drizzle(client);
 
-async function ensureUserExists(userId: string) {
+export async function getUserById(userId: string) {
+  const [existingUser] = await db
+    .select()
+    .from(user)
+    .where(eq(user.id, userId))
+    .limit(1);
+
+  return existingUser;
+}
+
+async function ensureUserExists(userId: string, address: string) {
   try {
-    const [existingUser] = await db
-      .select()
-      .from(user)
-      .where(eq(user.id, userId))
-      .limit(1);
+    const existingUser = await getUserById(userId);
 
     if (!existingUser) {
       await db.insert(user).values({
         id: userId,
-        email: `${userId}@privy.user`, // Placeholder email since we don't have it from Privy
-        password: null, // No password needed for Privy auth
+        email: `${userId}@privy.user`, // Placeholder for now, might need to get this from user in the future
+        address,
       });
     }
   } catch (error) {
@@ -48,13 +54,15 @@ export async function saveChat({
   id,
   userId,
   title,
+  address,
 }: {
   id: string;
   userId: string;
   title: string;
+  address: string;
 }) {
   try {
-    await ensureUserExists(userId);
+    await ensureUserExists(userId, address);
     return await db.insert(chat).values({
       id,
       createdAt: new Date(),

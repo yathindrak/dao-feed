@@ -39,7 +39,7 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
-  const { authenticated, login } = usePrivy();
+  const { authenticated, login, user } = usePrivy();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -92,11 +92,13 @@ function PureMultimodalInput({
       login();
       return;
     }
-    console.log(`submitting form for chat ${chatId}`);
 
     window.history.replaceState({}, '', `/chat/${chatId}`);
-
-    handleSubmit();
+    handleSubmit(undefined, {
+      headers: {
+        'x-privy-address': user?.wallet?.address ?? '',
+      },
+    });
 
     setLocalStorageInput('');
     resetHeight();
@@ -109,7 +111,11 @@ function PureMultimodalInput({
   return (
     <div className="relative w-full flex flex-col gap-4">
       {messages.length === 0 && (
-        <SuggestedActions append={append} chatId={chatId} />
+        <SuggestedActions
+          append={append}
+          chatId={chatId}
+          walletAddress={user?.wallet?.address ?? ''}
+        />
       )}
 
       <Textarea

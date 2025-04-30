@@ -9,9 +9,14 @@ import { usePrivy } from '@privy-io/react-auth';
 interface SuggestedActionsProps {
   chatId: string;
   append: UseChatHelpers['append'];
+  walletAddress: string;
 }
 
-function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
+function PureSuggestedActions({
+  chatId,
+  append,
+  walletAddress,
+}: SuggestedActionsProps) {
   const { authenticated, login } = usePrivy();
 
   const handleAction = (message: string) => {
@@ -19,10 +24,17 @@ function PureSuggestedActions({ chatId, append }: SuggestedActionsProps) {
       login();
       return;
     }
-    append({
-      role: 'user',
-      content: message,
-    });
+    append(
+      {
+        role: 'user',
+        content: message,
+      },
+      {
+        headers: {
+          'x-privy-address': walletAddress,
+        },
+      },
+    );
   };
 
   const suggestedActions = [
