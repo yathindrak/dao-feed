@@ -9,7 +9,7 @@ import { useSidebar } from './ui/sidebar';
 import { memo } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { type VisibilityType, VisibilitySelector } from './visibility-selector';
-import PrivyButton from './privy-button';
+import SignInButton from './sign-in-button';
 
 function PureChatHeader({
   chatId,
@@ -57,7 +57,7 @@ function PureChatHeader({
       )}
 
       <div className="order-4 md:ml-auto">
-        <PrivyButton />
+        <SignInButton />
       </div>
     </header>
   );

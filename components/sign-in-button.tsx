@@ -17,7 +17,7 @@ interface IButton {
   className?: string;
 }
 
-export default function PrivyButton(props: IButton) {
+export default function SignInButton(props: IButton) {
   const { authenticated, login, logout, user } = usePrivy();
 
   const walletAddress = user?.wallet?.address || '';

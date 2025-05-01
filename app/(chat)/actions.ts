@@ -2,11 +2,7 @@
 
 import { generateText, type UIMessage } from 'ai';
 import { cookies } from 'next/headers';
-import {
-  deleteMessagesByChatIdAfterTimestamp,
-  getMessageById,
-  updateChatVisiblityById,
-} from '@/lib/db/queries';
+import { updateChatVisiblityById } from '@/lib/db/queries';
 import type { VisibilityType } from '@/components/visibility-selector';
 import { aiProvider } from '@/lib/ai/providers';
 
@@ -35,17 +31,6 @@ export async function generateTitleFromUserMessage({
   } catch (error) {
     console.log({ error });
   }
-}
-
-export async function deleteTrailingMessages({ id }: { id: string }) {
-  console.log('deleting trailing messages for chat', id);
-  const [message] = await getMessageById({ id });
-  console.log('message', message);
-
-  await deleteMessagesByChatIdAfterTimestamp({
-    chatId: message.chatId,
-    timestamp: message.createdAt,
-  });
 }
 
 export async function updateChatVisibility({
