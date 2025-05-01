@@ -79,17 +79,19 @@ export function getChatHistoryPaginationKey(
   pageIndex: number,
   previousPageData: ChatHistory,
 ) {
+  console.log({ previousPageData, pageIndex });
   if (previousPageData && previousPageData.hasMore === false) {
     return null;
   }
 
   if (pageIndex === 0) return `/api/history?limit=${PAGE_SIZE}`;
 
-  const firstChatFromPage = previousPageData.chats.at(-1);
+  // TODO: Not sure if below is used, commented out for now
+  // const firstChatFromPage = previousPageData.chats.at(-1);
 
-  if (!firstChatFromPage) return null;
+  // if (!firstChatFromPage) return null;
 
-  return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
+  // return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
 }
 
 export function SidebarHistory({ user }: { user: object | undefined }) {

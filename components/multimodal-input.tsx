@@ -14,6 +14,17 @@ import { Textarea } from './ui/textarea';
 import { SuggestedActions } from './suggested-actions';
 import type { UseChatHelpers } from '@ai-sdk/react';
 
+function LoadingSkeleton() {
+  return (
+    <div className="relative w-full flex flex-col gap-4">
+      <div className="min-h-[98px] rounded-2xl bg-muted animate-pulse dark:bg-zinc-800" />
+      <div className="absolute bottom-0 right-0 p-2">
+        <div className="w-8 h-8 rounded-full bg-muted animate-pulse dark:bg-zinc-700" />
+      </div>
+    </div>
+  );
+}
+
 function PureMultimodalInput({
   chatId,
   input,
@@ -39,7 +50,7 @@ function PureMultimodalInput({
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
-  const { authenticated, login, user } = usePrivy();
+  const { authenticated, login, user, ready } = usePrivy();
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -108,6 +119,10 @@ function PureMultimodalInput({
     }
   }, [handleSubmit, setLocalStorageInput, width, chatId, authenticated, login]);
 
+  if (!ready) {
+    return <LoadingSkeleton />;
+  }
+
   return (
     <div className="relative w-full flex flex-col gap-4">
       {messages.length === 0 && (
@@ -148,7 +163,6 @@ function PureMultimodalInput({
       />
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        AA
         {status === 'submitted' ? (
           <StopButton stop={stop} setMessages={setMessages} />
         ) : (

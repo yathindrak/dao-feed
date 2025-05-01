@@ -94,13 +94,13 @@ export async function deleteChatById({ id }: { id: string }) {
 export async function getChatsByUserId({
   id,
   limit,
-  startingAfter,
-  endingBefore,
+  // startingAfter,
+  // endingBefore,
 }: {
   id: string;
   limit: number;
-  startingAfter: string | null;
-  endingBefore: string | null;
+  // startingAfter: string | null;
+  // endingBefore: string | null;
 }) {
   try {
     const extendedLimit = limit + 1;
@@ -119,33 +119,33 @@ export async function getChatsByUserId({
 
     let filteredChats: Array<Chat> = [];
 
-    if (startingAfter) {
-      const [selectedChat] = await db
-        .select()
-        .from(chat)
-        .where(eq(chat.id, startingAfter))
-        .limit(1);
+    // if (startingAfter) {
+    //   const [selectedChat] = await db
+    //     .select()
+    //     .from(chat)
+    //     .where(eq(chat.id, startingAfter))
+    //     .limit(1);
 
-      if (!selectedChat) {
-        throw new Error(`Chat with id ${startingAfter} not found`);
-      }
+    //   if (!selectedChat) {
+    //     throw new Error(`Chat with id ${startingAfter} not found`);
+    //   }
 
-      filteredChats = await query(gt(chat.createdAt, selectedChat.createdAt));
-    } else if (endingBefore) {
-      const [selectedChat] = await db
-        .select()
-        .from(chat)
-        .where(eq(chat.id, endingBefore))
-        .limit(1);
+    //   filteredChats = await query(gt(chat.createdAt, selectedChat.createdAt));
+    // } else if (endingBefore) {
+    //   const [selectedChat] = await db
+    //     .select()
+    //     .from(chat)
+    //     .where(eq(chat.id, endingBefore))
+    //     .limit(1);
 
-      if (!selectedChat) {
-        throw new Error(`Chat with id ${endingBefore} not found`);
-      }
+    //   if (!selectedChat) {
+    //     throw new Error(`Chat with id ${endingBefore} not found`);
+    //   }
 
-      filteredChats = await query(lt(chat.createdAt, selectedChat.createdAt));
-    } else {
-      filteredChats = await query();
-    }
+    //   filteredChats = await query(lt(chat.createdAt, selectedChat.createdAt));
+    // } else {
+    filteredChats = await query();
+    // }
 
     const hasMore = filteredChats.length > limit;
 
