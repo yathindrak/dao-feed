@@ -22,6 +22,8 @@ import { aiProvider } from '@/lib/ai/providers';
 import { cookies } from 'next/headers';
 import { PrivyClient } from '@privy-io/server-auth';
 import { type NextRequest, NextResponse } from 'next/server';
+import { initializeAgent } from '@/lib/ai/agentkit';
+import { baseSepolia } from 'viem/chains';
 
 export const maxDuration = 60;
 const maxMessagesPerDay = 100;
@@ -126,36 +128,12 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    // // Convert the new message to UIMessage format
-    // const newUIMessage: UIMessage = {
-    //   id: message.id,
-    //   role: 'user',
-    //   parts: message.parts || [{ type: 'text', text: message.content }],
-    //   content: message.content || message.parts?.[0]?.text || '',
-    //   createdAt: new Date(),
-    // };
-
-    // // Convert previous messages and append the new message
-    // const uiMessages = [...convertToUIMessages(previousMessages), newUIMessage];
-    // console.log('UI Messages:', uiMessages);
-
-    // try {
-    //   // Save the message after ensuring chat exists
-    //   await saveMessages({
-    //     messages: [
-    //       {
-    //         id: message.id,
-    //         chatId: body.id,
-    //         role: 'user',
-    //         parts: message.parts || [{ type: 'text', text: message.content }],
-    //         createdAt: new Date(),
-    //       },
-    //     ],
-    //   });
-    // } catch (error) {
-    //   console.error('Failed to save message:', error);
-    //   return new Response('Failed to save message', { status: 500 });
-    // }
+    const { tools } = await initializeAgent();
+    console.log('tools', tools);
+    // console.log('tools', {
+    //   getWeather,
+    //   ...tools,
+    // });
 
     return createDataStreamResponse({
       execute: (dataStream) => {
@@ -164,11 +142,15 @@ export async function POST(req: NextRequest) {
           system: systemPrompt(),
           messages: messages,
           maxSteps: 5,
-          experimental_activeTools: ['getWeather'],
+          experimental_activeTools: [
+            'getWeather',
+            'MoralisActionProvider_get_token_balances',
+          ],
           experimental_transform: smoothStream({ chunking: 'word' }),
           experimental_generateMessageId: generateUUID,
           tools: {
             getWeather,
+            ...tools,
           },
           onFinish: async ({ response }) => {
             try {

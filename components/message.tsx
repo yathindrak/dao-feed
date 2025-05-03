@@ -11,6 +11,7 @@ import { MessageActions } from './message-actions';
 import { Weather } from './weather';
 import equal from 'fast-deep-equal';
 import { cn } from '@/lib/utils';
+import AgentkitTool from './agentkit-tool';
 
 const PurePreviewMessage = ({
   chatId,
@@ -71,36 +72,30 @@ const PurePreviewMessage = ({
               if (type === 'tool-invocation') {
                 const { toolInvocation } = part;
                 const { toolName, toolCallId, state } = toolInvocation;
-                console.log(`tool-invocation: ${toolName}`);
 
-                if (state === 'call') {
-                  const { args } = toolInvocation;
-
-                  return (
-                    <div
-                      key={toolCallId}
-                      className={cx({
-                        skeleton: ['getWeather'].includes(toolName),
-                      })}
-                    >
-                      {toolName === 'getWeather' ? <Weather /> : null}
-                    </div>
-                  );
+                if (toolName === 'getWeather') {
+                  if (state === 'call') {
+                    return (
+                      <div key={toolCallId} className="skeleton">
+                        <Weather />
+                      </div>
+                    );
+                  }
+                  if (state === 'result') {
+                    return (
+                      <div key={toolCallId}>
+                        <Weather weatherAtLocation={toolInvocation.result} />
+                      </div>
+                    );
+                  }
                 }
 
-                if (state === 'result') {
-                  const { result } = toolInvocation;
-
-                  return (
-                    <div key={toolCallId}>
-                      {toolName === 'getWeather' ? (
-                        <Weather weatherAtLocation={result} />
-                      ) : (
-                        <pre>{JSON.stringify(result, null, 2)}</pre>
-                      )}
-                    </div>
-                  );
-                }
+                return (
+                  <AgentkitTool
+                    key={toolCallId}
+                    toolInvocation={toolInvocation}
+                  />
+                );
               }
             })}
 
