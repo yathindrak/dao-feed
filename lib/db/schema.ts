@@ -171,3 +171,25 @@ export const snapshotUserMonthlyActivity = pgTable(
 export type SnapshotUserMonthlyActivity = InferSelectModel<
   typeof snapshotUserMonthlyActivity
 >;
+
+export const snapshotFollow = pgTable('snapshot_follow', {
+  id: varchar('id', { length: 255 }).primaryKey().notNull(),
+  follower: varchar('follower', { length: 255 })
+    .notNull()
+    .references(() => snapshotUser.id),
+  spaceId: varchar('space_id', { length: 255 })
+    .notNull()
+    .references(() => snapshotSpace.id),
+  created: timestamp('created').notNull(),
+  lastIndexedAt: timestamp('last_indexed_at').notNull(),
+});
+
+export type SnapshotFollow = InferSelectModel<typeof snapshotFollow>;
+
+export const snapshotSyncState = pgTable('snapshot_sync_state', {
+  id: varchar('id', { length: 255 }).primaryKey().notNull(),
+  lastSyncedAt: timestamp('last_synced_at').notNull(),
+  lastCreatedAt: timestamp('last_created_at').notNull(),
+});
+
+export type SnapshotSyncState = InferSelectModel<typeof snapshotSyncState>;

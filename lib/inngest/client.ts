@@ -6,8 +6,8 @@ export const inngest = new Inngest({
 
 export const EVENTS = {
   SNAPSHOT: {
-    INDEX_SPACES: 'snapshot/index.spaces',
-    INDEX_PROPOSALS: 'snapshot/index.proposals',
-    INDEX_VOTES: 'snapshot/index.votes',
+    // INDEX_PROPOSALS: 'snapshot/index.proposals',
+
+    UPDATE_ACTIVE_PROPOSALS: 'snapshot/update.active.proposals',
   },
 } as const;
