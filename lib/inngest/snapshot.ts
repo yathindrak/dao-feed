@@ -79,7 +79,7 @@ async function queryWithRetries(
 // Index Active Proposals and Related Data
 export const indexActiveProposals = inngest.createFunction(
   { id: 'index-active-proposals' },
-  { cron: '0 * * * *' }, // Run every hour
+  { cron: '0 */2 * * *' }, // Run every 2 hours
   async ({ step }: { step: any }) => {
     try {
       const now = new Date();
@@ -241,11 +241,7 @@ export const indexActiveProposals = inngest.createFunction(
 
                 // Ensure all voters exist in snapshot_user
                 const voterIds = Array.from(
-                  new Set(
-                    votesToInsert.map(
-                      (v: { voter: string }) => v.voter as string,
-                    ),
-                  ),
+                  new Set(votesToInsert.map((v: { voter: string }) => v.voter)),
                 ) as string[];
                 if (voterIds.length > 0) {
                   const existingUsers = await db
@@ -308,13 +304,6 @@ export const indexActiveProposals = inngest.createFunction(
           .where(eq(snapshotSyncState.id, 'proposals'));
       });
 
-      console.log('Updated sync state');
-      // Trigger the update active proposals job
-      await step.sendEvent('trigger-update-active-proposals', {
-        name: 'snapshot/update.active.proposals',
-        data: {},
-      });
-
       return { success: true };
     } catch (error) {
       console.error('Error in indexActiveProposals:', error);
@@ -327,321 +316,292 @@ export const indexActiveProposals = inngest.createFunction(
   },
 );
 
-// // Update Active Proposals
-// export const updateActiveProposals = inngest.createFunction(
-//   { id: 'update-active-proposals' },
-//   [{ event: 'snapshot/update.active.proposals' }],
-//   async ({ step }: { step: any }) => {
-//     try {
-//       const now = new Date();
+// Sync votes for ended proposals that haven't been marked as synced
+export const syncEndedProposalVotes = inngest.createFunction(
+  { id: 'sync-ended-proposal-votes' },
+  { cron: '0 */2 * * *' }, // Run every 2 hours
+  async ({ step }: { step: any }) => {
+    return step.run('sync-ended-proposal-votes-main', async () => {
+      try {
+        const now = new Date();
+        // Find proposals that have ended and not yet synced
+        const proposalsToSync = await db
+          .select()
+          .from(snapshotProposal)
+          .where(
+            and(
+              lt(snapshotProposal.end, now), // can remove this if we want more uptodate data
+              eq(snapshotProposal.votesSynced, false),
+            ),
+          );
 
-//       // Fetch existing active proposals
-//       const activeProposals = await step.run(
-//         'fetch-active-proposals',
-//         async () => {
-//           return await db
-//             .select()
-//             .from(snapshotProposal)
-//             .where(
-//               and(
-//                 gt(snapshotProposal.end, now),
-//                 lt(snapshotProposal.start, now),
-//               ),
-//             );
-//         },
-//       );
+        for (const proposal of proposalsToSync) {
+          // Fetch all votes for this proposal from Snapshot
+          const votesQuery = `
+            query Votes {
+              votes(
+                first: ${BATCH_SIZE},
+                where: { proposal: "${proposal.id}" },
+                orderBy: "created",
+                orderDirection: desc
+              ) {
+                id
+                voter
+                choice
+                created
+              }
+            }
+          `;
+          const votesData = await queryWithRetries(votesQuery, {});
+          const votes = votesData?.votes || [];
+          if (votes.length > 0) {
+            // Prepare bulk insert data
+            const votesToInsert = votes.map((vote: any) => ({
+              id: vote.id,
+              voter: vote.voter,
+              choice: vote.choice,
+              proposalId: proposal.id,
+              created: new Date(vote.created * 1000),
+            }));
+            // Ensure all voters exist in snapshot_user
+            const voterIds = Array.from(
+              new Set(votesToInsert.map((v: { voter: string }) => v.voter)),
+            ) as string[];
+            if (voterIds.length > 0) {
+              const existingUsers = await db
+                .select({ id: snapshotUser.id })
+                .from(snapshotUser)
+                .where(inArray(snapshotUser.id, voterIds));
+              const existingUserIds = new Set(
+                existingUsers.map((u: { id: string }) => u.id),
+              );
+              const missingVoters: string[] = voterIds.filter(
+                (id: string) => !existingUserIds.has(id),
+              );
+              if (missingVoters.length > 0) {
+                await db
+                  .insert(snapshotUser)
+                  .values(
+                    missingVoters.map((id: string) => ({
+                      id,
+                      lastIndexedAt: new Date(),
+                    })),
+                  )
+                  .onConflictDoNothing();
+              }
+            }
+            // Bulk insert with onConflictDoUpdate
+            await db
+              .insert(snapshotVote)
+              .values(votesToInsert)
+              .onConflictDoUpdate({
+                target: snapshotVote.id,
+                set: { choice: sql`excluded.choice` },
+              });
+          }
+          // Mark proposal as votesSynced
+          await db
+            .update(snapshotProposal)
+            .set({ votesSynced: true })
+            .where(eq(snapshotProposal.id, proposal.id));
+        }
+        return { success: true, synced: proposalsToSync.length };
+      } catch (error) {
+        console.error('Error in syncEndedProposalVotes:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          shouldRetry: false,
+        };
+      }
+    });
+  },
+);
 
-//       // Process each active proposal
-//       for (const proposal of activeProposals) {
-//         // Check if we need to update the space data
-//         const space = await db
-//           .select()
-//           .from(snapshotSpace)
-//           .where(eq(snapshotSpace.id, proposal.spaceId))
-//           .limit(1);
+// Helper function to update space data and its follows
+async function updateSpaceData(spaceId: string, now: Date) {
+  const spaceQuery = `
+    query Space {
+      space(id: "${spaceId}") {
+        id
+        name
+        about
+        network
+        symbol
+        strategies {
+          name
+          params
+        }
+        members
+        admins
+      }
+    }
+  `;
 
-//         const shouldUpdateSpace =
-//           !space[0]?.lastIndexedAt ||
-//           now.getTime() - space[0].lastIndexedAt.getTime() > SIX_HOURS;
+  const spaceData = await queryWithRetries(spaceQuery, {});
 
-//         if (shouldUpdateSpace) {
-//           await step.run(`update-space-data-${proposal.spaceId}`, async () => {
-//             await updateSpaceData(proposal.spaceId, now);
-//           });
-//         }
+  if (spaceData?.space) {
+    console.log(`Updating space ${spaceId}`);
+    await db
+      .insert(snapshotSpace)
+      .values({
+        ...spaceData.space,
+        strategies: spaceData.space.strategies || [],
+        lastIndexedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: snapshotSpace.id,
+        set: {
+          name: spaceData.space.name,
+          about: spaceData.space.about,
+          network: spaceData.space.network,
+          symbol: spaceData.space.symbol,
+          strategies: spaceData.space.strategies || [],
+          lastIndexedAt: now,
+        },
+      });
 
-//         // Update only scores and state for the proposal
-//         const proposalQuery = `
-//           query Proposal {
-//             proposal(id: "${proposal.id}") {
-//               id
-//               state
-//               scores
-//               scores_total
-//             }
-//           }
-//         `;
+    // Update members
+    const allMembers = [
+      ...new Set([
+        ...(spaceData.space.members || []),
+        ...(spaceData.space.admins || []),
+      ]),
+    ];
 
-//         const proposalData = await step.run(
-//           `fetch-proposal-${proposal.id}`,
-//           async () => {
-//             return queryWithRetries(proposalQuery, {});
-//           },
-//         );
-//         if (proposalData?.proposal) {
-//           await step.run(`update-proposal-${proposal.id}`, async () => {
-//             await db
-//               .update(snapshotProposal)
-//               .set({
-//                 state: proposalData.proposal.state,
-//                 scores: proposalData.proposal.scores || [],
-//                 scoresTotal:
-//                   proposalData.proposal.scores_total?.toString() || '0',
-//               })
-//               .where(eq(snapshotProposal.id, proposal.id));
-//           });
-//         }
+    if (allMembers.length > 0) {
+      console.log(`All members ${allMembers.length}`);
+      const membersQuery = `
+          query Users {
+            users(
+              where: { id_in: ${JSON.stringify(allMembers)} }
+            ) {
+              id
+              name
+              about
+              avatar
+              farcaster
+              lastVote
+              lens
+              twitter
+            }
+          }
+        `;
 
-//         // Fetch and update votes
-//         const votesQuery = `
-//           query Votes {
-//             votes(
-//               first: ${BATCH_SIZE},
-//               where: { proposal: "${proposal.id}" },
-//               orderBy: "created",
-//               orderDirection: desc
-//             ) {
-//               id
-//               voter
-//               choice
-//               created
-//             }
-//           }
-//         `;
+      const mems = await queryWithRetries(membersQuery, {});
+      const users = mems?.users || [];
+      console.log('Members data fetched');
+      console.log(`Found ${users.length} members`);
 
-//         const votesData = await step.run(
-//           `fetch-votes-${proposal.id}`,
-//           async () => {
-//             return queryWithRetries(votesQuery, {});
-//           },
-//         );
-//         if (votesData?.votes) {
-//           await step.run(`update-votes-${proposal.id}`, async () => {
-//             for (const vote of votesData.votes) {
-//               await db
-//                 .insert(snapshotVote)
-//                 .values({
-//                   ...vote,
-//                   proposalId: proposal.id,
-//                   created: new Date(vote.created * 1000),
-//                 })
-//                 .onConflictDoUpdate({
-//                   target: snapshotVote.id,
-//                   set: {
-//                     choice: vote.choice,
-//                   },
-//                 });
-//             }
-//           });
-//         }
-//       }
+      // TODO: Make below and update users a transaction if possible
+      // First mark all existing active members as inactive before update
+      await db
+        .update(snapshotSpaceMember)
+        .set({
+          isActive: false,
+          removedAt: now,
+        })
+        .where(
+          and(
+            eq(snapshotSpaceMember.spaceId, spaceData.space.id),
+            eq(snapshotSpaceMember.isActive, true),
+          ),
+        );
+      console.log(`Marked ${allMembers.length} active members as inactive`);
+      for (const user of users) {
+        console.log(`Updating user ${user.id}`);
+        // Update user
+        await db
+          .insert(snapshotUser)
+          .values({
+            ...user,
+            lastIndexedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: snapshotUser.id,
+            set: {
+              name: user.name,
+              about: user.about,
+              avatar: user.avatar,
+              farcaster: user.farcaster,
+              lastVote: user.lastVote,
+              lens: user.lens,
+              twitter: user.twitter,
+              lastIndexedAt: now,
+            },
+          });
 
-//       return { success: true };
-//     } catch (error) {
-//       console.error('Error in updateActiveProposals:', error);
-//       return {
-//         success: false,
-//         error: error instanceof Error ? error.message : 'Unknown error',
-//         shouldRetry: false,
-//       };
-//     }
-//   },
-// );
+        // Update membership
+        await db
+          .insert(snapshotSpaceMember)
+          .values({
+            spaceId: spaceData.space.id,
+            memberId: user.id,
+            addedAt: now,
+            isActive: true,
+            removedAt: null,
+          })
+          .onConflictDoUpdate({
+            target: [snapshotSpaceMember.spaceId, snapshotSpaceMember.memberId],
+            set: {
+              isActive: true,
+              removedAt: null,
+              addedAt: now,
+            },
+          });
+      }
+    }
 
-// // Helper function to update space data and its follows
-// async function updateSpaceData(spaceId: string, now: Date) {
-//   const spaceQuery = `
-//     query Space {
-//       space(id: "${spaceId}") {
-//         id
-//         name
-//         about
-//         network
-//         symbol
-//         strategies {
-//           name
-//           params
-//         }
-//         members
-//         admins
-//       }
-//     }
-//   `;
+    // Fetch and update follows for the space
+    const followsQuery = `
+        query SpaceFollows {
+          follows(
+            first: ${BATCH_SIZE},
+            where: { space: "${spaceData.space.id}" }
+          ) {
+            id
+            follower
+            space {
+              id
+            }
+            created
+          }
+        }
+      `;
 
-//   const spaceData = await queryWithRetries(spaceQuery, {});
+    const followsData = await queryWithRetries(followsQuery, {});
+    const follows = followsData?.follows || [];
 
-//   if (spaceData?.space) {
-//     console.log(`Updating space ${spaceId}`);
-//     await db
-//       .insert(snapshotSpace)
-//       .values({
-//         ...spaceData.space,
-//         strategies: spaceData.space.strategies || [],
-//         lastIndexedAt: now,
-//       })
-//       .onConflictDoUpdate({
-//         target: snapshotSpace.id,
-//         set: {
-//           name: spaceData.space.name,
-//           about: spaceData.space.about,
-//           network: spaceData.space.network,
-//           symbol: spaceData.space.symbol,
-//           strategies: spaceData.space.strategies || [],
-//           lastIndexedAt: now,
-//         },
-//       });
+    // Bulk check follower existence
+    const followerIds = follows.map((f: any) => f.follower);
+    console.log(`Checking ${followerIds.length} followers`);
+    let existingFollowers: string[] = [];
+    if (followerIds.length > 0) {
+      const rows = await db
+        .select({ id: snapshotUser.id })
+        .from(snapshotUser)
+        .where(inArray(snapshotUser.id, followerIds));
+      existingFollowers = rows.map((r) => r.id);
+    }
 
-//     // Update members
-//     const allMembers = [
-//       ...new Set([
-//         ...(spaceData.space.members || []),
-//         ...(spaceData.space.admins || []),
-//       ]),
-//     ];
-
-//     if (allMembers.length > 0) {
-//       console.log(`All members ${allMembers.length}`);
-//       const membersQuery = `
-//           query Users {
-//             users(
-//               where: { id_in: ${JSON.stringify(allMembers)} }
-//             ) {
-//               id
-//               name
-//               about
-//               avatar
-//               farcaster
-//               lastVote
-//               lens
-//               twitter
-//             }
-//           }
-//         `;
-
-//       const mems = await queryWithRetries(membersQuery, {});
-//       const users = mems?.users || [];
-//       console.log('Members data fetched');
-//       console.log(`Found ${users.length} members`);
-
-//       // TODO: Make below and update users a transaction if possible
-//       // First mark all existing active members as inactive before update
-//       await db
-//         .update(snapshotSpaceMember)
-//         .set({
-//           isActive: false,
-//           removedAt: now,
-//         })
-//         .where(
-//           and(
-//             eq(snapshotSpaceMember.spaceId, spaceData.space.id),
-//             eq(snapshotSpaceMember.isActive, true),
-//           ),
-//         );
-//       console.log(`Marked ${allMembers.length} active members as inactive`);
-//       for (const user of users) {
-//         console.log(`Updating user ${user.id}`);
-//         // Update user
-//         await db
-//           .insert(snapshotUser)
-//           .values({
-//             ...user,
-//             lastIndexedAt: now,
-//           })
-//           .onConflictDoUpdate({
-//             target: snapshotUser.id,
-//             set: {
-//               name: user.name,
-//               about: user.about,
-//               avatar: user.avatar,
-//               farcaster: user.farcaster,
-//               lastVote: user.lastVote,
-//               lens: user.lens,
-//               twitter: user.twitter,
-//               lastIndexedAt: now,
-//             },
-//           });
-
-//         // Update membership
-//         await db
-//           .insert(snapshotSpaceMember)
-//           .values({
-//             spaceId: spaceData.space.id,
-//             memberId: user.id,
-//             addedAt: now,
-//             isActive: true,
-//             removedAt: null,
-//           })
-//           .onConflictDoUpdate({
-//             target: [snapshotSpaceMember.spaceId, snapshotSpaceMember.memberId],
-//             set: {
-//               isActive: true,
-//               removedAt: null,
-//               addedAt: now,
-//             },
-//           });
-//       }
-//     }
-
-//     // Fetch and update follows for the space
-//     const followsQuery = `
-//         query SpaceFollows {
-//           follows(
-//             first: ${BATCH_SIZE},
-//             where: { space: "${spaceData.space.id}" }
-//           ) {
-//             id
-//             follower
-//             space {
-//               id
-//             }
-//             created
-//           }
-//         }
-//       `;
-
-//     const followsData = await queryWithRetries(followsQuery, {});
-//     const follows = followsData?.follows || [];
-
-//     // Bulk check follower existence
-//     const followerIds = follows.map((f: any) => f.follower);
-//     console.log(`Checking ${followerIds.length} followers`);
-//     let existingFollowers: string[] = [];
-//     if (followerIds.length > 0) {
-//       const rows = await db
-//         .select({ id: snapshotUser.id })
-//         .from(snapshotUser)
-//         .where(inArray(snapshotUser.id, followerIds));
-//       existingFollowers = rows.map((r) => r.id);
-//     }
-
-//     console.log(`Found ${existingFollowers.length} existing followers`);
-//     for (const follow of follows) {
-//       if (!existingFollowers.includes(follow.follower)) continue;
-//       await db
-//         .insert(snapshotFollow)
-//         .values({
-//           id: follow.id,
-//           follower: follow.follower,
-//           spaceId: follow.space.id,
-//           created: new Date(follow.created * 1000),
-//           lastIndexedAt: now,
-//         })
-//         .onConflictDoUpdate({
-//           target: snapshotFollow.id,
-//           set: {
-//             lastIndexedAt: now,
-//           },
-//         });
-//     }
-//   }
-// }
+    console.log(`Found ${existingFollowers.length} existing followers`);
+    for (const follow of follows) {
+      if (!existingFollowers.includes(follow.follower)) continue;
+      await db
+        .insert(snapshotFollow)
+        .values({
+          id: follow.id,
+          follower: follow.follower,
+          spaceId: follow.space.id,
+          created: new Date(follow.created * 1000),
+          lastIndexedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: snapshotFollow.id,
+          set: {
+            lastIndexedAt: now,
+          },
+        });
+    }
+  }
+}

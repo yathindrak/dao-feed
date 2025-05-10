@@ -115,6 +115,7 @@ export const snapshotProposal = pgTable('snapshot_proposal', {
   scores: json('scores'),
   scoresTotal: text('scores_total'),
   createdAt: timestamp('created_at').notNull(),
+  votesSynced: boolean('votes_synced').notNull().default(false),
 });
 
 export type SnapshotProposal = InferSelectModel<typeof snapshotProposal>;

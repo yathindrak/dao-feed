@@ -1,9 +1,9 @@
-import { indexActiveProposals, updateActiveProposals } from './snapshot';
-import { inngest, EVENTS } from './client';
+import { indexActiveProposals, syncEndedProposalVotes } from './snapshot';
+import { inngest } from './client';
 
-export { inngest, EVENTS };
+export { inngest };
 
 export const functions = {
   indexActiveProposals,
-  updateActiveProposals,
+  syncEndedProposalVotes,
 } as const;
