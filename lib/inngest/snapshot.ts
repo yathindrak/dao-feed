@@ -9,8 +9,9 @@ import {
   snapshotSpaceMember,
   snapshotFollow,
   snapshotSyncState,
+  snapshotUserMonthlyActivity,
 } from '../db/schema';
-import { gt, and, eq, lt, inArray, sql } from 'drizzle-orm';
+import { gt, and, eq, lt, inArray, sql, gte, lte } from 'drizzle-orm';
 
 const SNAPSHOT_API = 'https://hub.snapshot.org/graphql';
 const BATCH_SIZE = 1000;
@@ -605,3 +606,155 @@ async function updateSpaceData(spaceId: string, now: Date) {
     }
   }
 }
+
+// Aggregate monthly user activity (votes and proposals)
+export const snapshotUserMonthlyActivityJob = inngest.createFunction(
+  { id: 'snapshot-user-monthly-activity' },
+  { cron: '0 1 1 * *' }, // Run at 1am UTC on the 1st of each month
+  async ({ step }: { step: any }) => {
+    try {
+      const now = new Date();
+      // Calculate previous month and year
+      let year = now.getUTCFullYear();
+      let monthNum = now.getUTCMonth(); // 0-based, so 0 = January
+      if (monthNum === 0) {
+        // If January, previous month is December of previous year
+        year = year - 1;
+        monthNum = 12;
+      }
+      const month = String(monthNum).padStart(2, '0');
+      // Get first and last day of the previous month
+      const startOfMonth = new Date(Date.UTC(year, monthNum - 1, 1, 0, 0, 0));
+      const endOfMonth = new Date(Date.UTC(year, monthNum, 0, 23, 59, 59, 999));
+
+      // Aggregate proposals per user for this month
+      const proposalsAgg = await db
+        .select({
+          userId: snapshotProposal.author,
+          proposalsCount: sql`count(*)::int`,
+        })
+        .from(snapshotProposal)
+        .where(
+          and(
+            gte(snapshotProposal.createdAt, startOfMonth),
+            lte(snapshotProposal.createdAt, endOfMonth),
+          ),
+        )
+        .groupBy(snapshotProposal.author);
+
+      // Aggregate votes per user for this month
+      const votesAgg = await db
+        .select({
+          userId: snapshotVote.voter,
+          votesCount: sql`count(*)::int`,
+        })
+        .from(snapshotVote)
+        .where(
+          and(
+            gte(snapshotVote.created, startOfMonth),
+            lte(snapshotVote.created, endOfMonth),
+          ),
+        )
+        .groupBy(snapshotVote.voter);
+
+      // Merge results by userId
+      const uniqueUserIds = new Set([
+        ...proposalsAgg
+          .map((p) => p.userId)
+          .filter((id) => typeof id === 'string' && id),
+        ...votesAgg
+          .map((v) => v.userId)
+          .filter((id) => typeof id === 'string' && id),
+      ]);
+
+      const nowTs = new Date();
+      // Build upserts with all counts, but leave contributionPercent as '0' for now
+      const upserts = Array.from(uniqueUserIds)
+        .map((userId) => {
+          // Get proposal and vote counts for this user, defaulting to 0 if not found
+          const proposals =
+            proposalsAgg.find((p) => p.userId === userId)?.proposalsCount || 0;
+          const votes =
+            votesAgg.find((v) => v.userId === userId)?.votesCount || 0;
+
+          return {
+            userId: userId as string,
+            year: String(year),
+            month,
+            proposalsCount: Number(proposals),
+            votesCount: Number(votes),
+            lastUpdatedAt: nowTs,
+            contributionPercent: '0', // Set in next step
+          };
+        })
+        .filter((row) => row.userId); // Remove any null/undefined uniqueUserIds
+      // Calculate totalActivity
+      const totalActivity = upserts.reduce(
+        (sum, row) => sum + row.proposalsCount + row.votesCount,
+        0,
+      );
+      // Set contributionPercent for each user
+      upserts.forEach((row) => {
+        const userActivity = row.proposalsCount + row.votesCount;
+        row.contributionPercent = (
+          totalActivity > 0 ? userActivity / totalActivity : 0
+        ).toString();
+      });
+
+      // Ensure all uniqueUserIds exist in snapshot_user
+      const existingUsers = await db
+        .select({ id: snapshotUser.id })
+        .from(snapshotUser)
+        .where(
+          inArray(
+            snapshotUser.id,
+            Array.from(uniqueUserIds).filter(
+              (id): id is string => typeof id === 'string' && !!id,
+            ),
+          ),
+        );
+      const existingUserIds = new Set(existingUsers.map((u) => u.id));
+      const missingUserIds = Array.from(uniqueUserIds).filter(
+        (id): id is string =>
+          typeof id === 'string' && !!id && !existingUserIds.has(id),
+      );
+      if (missingUserIds.length > 0) {
+        for (const id of missingUserIds) {
+          await db
+            .insert(snapshotUser)
+            .values({ id, lastIndexedAt: new Date() })
+            .onConflictDoNothing();
+        }
+      }
+
+      // Upsert into snapshotUserMonthlyActivity
+      for (const row of upserts) {
+        await db
+          .insert(snapshotUserMonthlyActivity)
+          .values(row)
+          .onConflictDoUpdate({
+            target: [
+              snapshotUserMonthlyActivity.userId,
+              snapshotUserMonthlyActivity.year,
+              snapshotUserMonthlyActivity.month,
+            ],
+            set: {
+              proposalsCount: row.proposalsCount,
+              votesCount: row.votesCount,
+              lastUpdatedAt: row.lastUpdatedAt,
+              contributionPercent: row.contributionPercent,
+            },
+          });
+      }
+
+      return { success: true, upserts: upserts.length };
+    } catch (error) {
+      console.error('Error in snapshotUserMonthlyActivityJob:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        shouldRetry: false,
+      };
+    }
+  },
+);

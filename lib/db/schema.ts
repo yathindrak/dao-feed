@@ -9,6 +9,7 @@ import {
   primaryKey,
   boolean,
   integer,
+  numeric,
 } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('User', {
@@ -161,6 +162,10 @@ export const snapshotUserMonthlyActivity = pgTable(
     proposalsCount: integer('proposals_count').notNull().default(0),
     votesCount: integer('votes_count').notNull().default(0),
     lastUpdatedAt: timestamp('last_updated_at').notNull(),
+    contributionPercent: numeric('contribution_percent', {
+      precision: 8,
+      scale: 6,
+    }),
   },
   (table) => {
     return {
