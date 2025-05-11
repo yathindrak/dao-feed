@@ -11,7 +11,7 @@ import { Markdown } from '@/components/markdown';
 import { getToolInfo } from '@/lib/ai/agentkit/tool-info';
 import type { ToolInvocation } from 'ai';
 import { AnimatedShinyText } from '../ui/animated-shiny-text';
-import Balances from './balances';
+import Proposals from './proposals';
 
 interface Props {
   toolInvocation: ToolInvocation;
@@ -43,8 +43,12 @@ const AgentkitTool: React.FC<Props> = ({ toolInvocation }) => {
           <ChevronDown className="size-4 transition-transform duration-300 group-data-[state=open]:rotate-180" />
         </CollapsibleTrigger>
         <CollapsibleContent>
-          {parsedToolName === 'get_token_balances' ? (
-            <Balances result={result} />
+          {[
+            'get_created_proposals',
+            'get_new_unaddressed_proposals',
+            'get_addressed_proposals',
+          ].includes(parsedToolName) ? (
+            <Proposals result={result} />
           ) : (
             <Markdown>{result}</Markdown>
           )}

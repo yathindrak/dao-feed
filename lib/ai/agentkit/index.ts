@@ -1,8 +1,7 @@
 import { AgentKit } from '@coinbase/agentkit';
 import { getVercelAITools } from '@coinbase/agentkit-vercel-ai-sdk';
-// import { getVercelAITools } from './get-vercel-ai-tools';
-import { moralisActionProvider } from '@/agentkit-action-providers/moralis';
 import { base, baseSepolia, type Chain } from 'viem/chains';
+import { snapshotActionProvider } from '@/agentkit-action-providers/snapshot/snapshotActionProvider';
 
 export const SUPPORTED_NETWORKS: Chain[] = [base, baseSepolia];
 
@@ -14,16 +13,12 @@ export const DEFAULT_NETWORK = base;
  * @returns Object containing initialized tools
  * @throws Error if initialization fails
  */
-export async function initializeAgent() {
+export async function initializeAgent(userAddress?: string) {
   try {
     const agentKit = await AgentKit.from({
       cdpApiKeyName: process.env.CDP_API_KEY_NAME,
       cdpApiKeyPrivateKey: process.env.CDP_API_KEY_PRIVATE_KEY,
-      actionProviders: [
-        ...(process.env.MORALIS_API_KEY
-          ? [moralisActionProvider(process.env.MORALIS_API_KEY)]
-          : []),
-      ],
+      actionProviders: [snapshotActionProvider(userAddress)],
     });
 
     const tools = getVercelAITools(agentKit);

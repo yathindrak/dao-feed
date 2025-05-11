@@ -50,15 +50,7 @@ export async function POST(req: NextRequest) {
     const userId = userClaims.userId;
 
     const body = await req.json();
-    // {
-    //   bodyMsg: {
-    //     id: 'ac19a850-2762-4dc2-9718-7b5efd5870e6',
-    //     createdAt: '2025-04-30T15:57:44.125Z',
-    //     role: 'user',
-    //     content: 'whats the ucrrent state',
-    //     parts: [ [Object] ]
-    //   }
-    // }
+
     const message = body.message;
 
     // Ensure message has content
@@ -108,12 +100,24 @@ export async function POST(req: NextRequest) {
     }
 
     const previousMessages = await getMessagesByChatId({ id: body.id });
-    console.log({ previousMessages });
+    console.log({
+      previousMessages2: previousMessages.map((m) =>
+        m?.parts ? JSON.stringify(m.parts) : 'no parts',
+      ),
+    });
+    console.log({
+      message2: message.message,
+    });
 
     const messages = appendClientMessage({
       // @ts-expect-error: todo add type conversion from DBMessage[] to UIMessage[]
       messages: previousMessages,
       message: message,
+    });
+    console.log({
+      messages3: messages.map((m) =>
+        m?.parts ? JSON.stringify(m.parts) : 'no parts',
+      ),
     });
 
     await saveMessages({
@@ -128,12 +132,7 @@ export async function POST(req: NextRequest) {
       ],
     });
 
-    const { tools } = await initializeAgent();
-    console.log('tools', tools);
-    // console.log('tools', {
-    //   getWeather,
-    //   ...tools,
-    // });
+    const { tools } = await initializeAgent(userAddress ?? undefined);
 
     return createDataStreamResponse({
       execute: (dataStream) => {
@@ -144,8 +143,10 @@ export async function POST(req: NextRequest) {
           maxSteps: 5,
           experimental_activeTools: [
             'getWeather',
-            'MoralisActionProvider_get_token_balances',
-          ],
+            'SnapshotActionProvider_get_created_proposals',
+            'SnapshotActionProvider_get_new_unaddressed_proposals',
+            'SnapshotActionProvider_get_addressed_proposals',
+          ] as any,
           experimental_transform: smoothStream({ chunking: 'word' }),
           experimental_generateMessageId: generateUUID,
           tools: {
@@ -153,6 +154,9 @@ export async function POST(req: NextRequest) {
             ...tools,
           },
           onFinish: async ({ response }) => {
+            console.log({
+              responseMessages: JSON.stringify(response.messages),
+            });
             try {
               const assistantId = getTrailingMessageId({
                 messages: response.messages.filter(

@@ -28,7 +28,7 @@ function PureMessages({
 }: MessagesProps) {
   const [messagesContainerRef, messagesEndRef] =
     useScrollToBottom<HTMLDivElement>();
-  console.log;
+  console.log({ messages });
   return (
     <div
       ref={messagesContainerRef}
@@ -52,11 +52,9 @@ function PureMessages({
           isReadonly={isReadonly}
         />
       ))}
-
       {status === 'submitted' &&
         messages.length > 0 &&
         messages[messages.length - 1].role === 'user' && <ThinkingMessage />}
-
       <div
         ref={messagesEndRef}
         className="shrink-0 min-w-[24px] min-h-[24px]"
