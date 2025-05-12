@@ -11,16 +11,14 @@ import {
   snapshotSyncState,
   snapshotUserMonthlyActivity,
 } from '../db/schema';
-import { gt, and, eq, lt, inArray, sql, gte, lte } from 'drizzle-orm';
+import { and, eq, lt, inArray, sql, gte, lte } from 'drizzle-orm';
 
 const SNAPSHOT_API = 'https://hub.snapshot.org/graphql';
 const BATCH_SIZE = 1000;
-// const RATE_LIMIT = 60;
-// const RATE_LIMIT_SLEEP = 60 * 1000;
+
 const MAX_RETRIES = 3;
 const SIX_HOURS = 6 * 60 * 60 * 1000;
 
-// Initialize database connection
 if (!process.env.POSTGRES_URL) {
   console.error('POSTGRES_URL environment variable is not set');
   process.exit(1);

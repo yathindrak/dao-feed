@@ -3,20 +3,18 @@ import { desc, sql, count, eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
-// Initialize database connection
 if (!process.env.POSTGRES_URL) {
   throw new Error('POSTGRES_URL environment variable is not set');
 }
 const client = postgres(process.env.POSTGRES_URL);
 const db = drizzle(client);
 
-// Define a type for the user data we select
 interface LeaderboardUser {
   id: string;
   name: string | null;
   avatar: string | null;
-  votesCount: any; // Drizzle's json type might come as any, or you can be more specific
-  proposalsCount: any; // Same as above
+  votesCount: any;
+  proposalsCount: any;
 }
 
 export default async function LeaderboardPage() {

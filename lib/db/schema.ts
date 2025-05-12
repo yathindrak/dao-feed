@@ -121,6 +121,7 @@ export const snapshotProposal = pgTable('snapshot_proposal', {
 
 export type SnapshotProposal = InferSelectModel<typeof snapshotProposal>;
 
+// TODO: We can prolly simplify this table to just store address (user id). then the db ops would be simplified
 export const snapshotUser = pgTable('snapshot_user', {
   id: varchar('id', { length: 255 }).primaryKey().notNull(),
   name: text('name'),
@@ -191,6 +192,49 @@ export const snapshotFollow = pgTable('snapshot_follow', {
 });
 
 export type SnapshotFollow = InferSelectModel<typeof snapshotFollow>;
+
+export const snapshotPrizePool = pgTable(
+  'snapshot_prize_pool',
+  {
+    id: uuid('id').defaultRandom(),
+    year: varchar('year', { length: 4 }).notNull(),
+    month: varchar('month', { length: 2 }).notNull(),
+    amount: numeric('amount', { precision: 16, scale: 6 }).notNull(),
+    currency: varchar('currency', { length: 10 }).notNull().default('ETH'),
+    createdAt: timestamp('created_at').notNull(),
+    updatedAt: timestamp('updated_at').notNull(),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.year, table.month] }),
+    };
+  },
+);
+
+export type SnapshotPrizePool = InferSelectModel<typeof snapshotPrizePool>;
+
+export const userRewardClaim = pgTable(
+  'user_reward_claim',
+  {
+    id: uuid('id').defaultRandom(),
+    userId: varchar('user_id', { length: 255 })
+      .notNull()
+      .references(() => user.id),
+    year: varchar('year', { length: 4 }).notNull(),
+    month: varchar('month', { length: 2 }).notNull(),
+    amount: numeric('amount', { precision: 16, scale: 6 }).notNull(),
+    currency: varchar('currency', { length: 10 }).notNull(),
+    txHash: varchar('tx_hash', { length: 66 }),
+    claimedAt: timestamp('claimed_at').notNull(),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.userId, table.year, table.month] }),
+    };
+  },
+);
+
+export type UserRewardClaim = InferSelectModel<typeof userRewardClaim>;
 
 export const snapshotSyncState = pgTable('snapshot_sync_state', {
   id: varchar('id', { length: 255 }).primaryKey().notNull(),

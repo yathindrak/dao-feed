@@ -2,8 +2,8 @@
 
 import { useRouter } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
+import { PlusIcon, BarChartIcon, DashboardIcon } from '@radix-ui/react-icons';
 
-import { PlusIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,7 +55,7 @@ export function AppSidebar() {
                   className="p-2 h-fit"
                   onClick={handleNewChat}
                 >
-                  <PlusIcon />
+                  <PlusIcon className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent align="end">New Chat</TooltipContent>
@@ -65,6 +65,30 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         {authenticated && user && <SidebarHistory user={user} />}
+
+        <div className="mt-4 px-2">
+          <div className="text-xs text-gray-500 font-medium mb-2 px-2">
+            DAO Governance
+          </div>
+          <nav className="space-y-1">
+            <Link
+              href="/leaderboard"
+              onClick={() => setOpenMobile(false)}
+              className="flex items-center px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+            >
+              <BarChartIcon className="mr-2 h-4 w-4" />
+              Live Leaderboard
+            </Link>
+            <Link
+              href="/claim"
+              onClick={() => setOpenMobile(false)}
+              className="flex items-center px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+            >
+              <DashboardIcon className="mr-2 h-4 w-4" />
+              Claim Rewards
+            </Link>
+          </nav>
+        </div>
       </SidebarContent>
     </Sidebar>
   );

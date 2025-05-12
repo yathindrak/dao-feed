@@ -4,6 +4,9 @@ import { Roboto, Roboto_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import Providers from './providers';
 import AuthCheck from '@/components/auth-check';
+import { cookies } from 'next/headers';
+import { AppSidebar } from '@/components/app-sidebar';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 
 import './globals.css';
 
@@ -56,6 +59,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const isCollapsed = cookieStore.get('sidebar:state')?.value !== 'true';
+
   return (
     <html
       lang="en"
@@ -83,7 +89,10 @@ export default async function RootLayout({
           <Toaster position="top-center" />
           <Providers>
             <AuthCheck />
-            {children}
+            <SidebarProvider defaultOpen={!isCollapsed}>
+              <AppSidebar />
+              <SidebarInset>{children}</SidebarInset>
+            </SidebarProvider>
           </Providers>
         </ThemeProvider>
       </body>
