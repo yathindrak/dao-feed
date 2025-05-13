@@ -92,7 +92,7 @@ export function VisibilitySelector({
             <div className="flex flex-col gap-1 items-start">
               {visibility.label}
               {visibility.description && (
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground group-hover/item:text-primary group-hover/item:font-semibold group-data-[active=true]/item:text-primary group-data-[active=true]/item:font-semibold">
                   {visibility.description}
                 </div>
               )}

@@ -64,7 +64,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   if (!chatModelFromCookie) {
     return (
-      <>
+      <div className="bg-background dark:bg-background min-h-screen">
         <Chat
           id={chat.id}
           initialMessages={convertToUIMessages(messagesFromDb)}
@@ -72,12 +72,12 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           isReadonly={user?.userId !== chat.userId}
         />
         <DataStreamHandler id={id} />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="bg-background dark:bg-background min-h-screen">
       <Chat
         id={chat.id}
         initialMessages={convertToUIMessages(messagesFromDb)}
@@ -85,6 +85,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         isReadonly={user?.userId !== chat.userId}
       />
       <DataStreamHandler id={id} />
-    </>
+    </div>
   );
 }

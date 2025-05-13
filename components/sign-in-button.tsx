@@ -63,8 +63,6 @@ export default function SignInButton(props: IButton) {
           {
             'text-muted-foreground hover:opacity-70 rounded-full':
               authenticated,
-            'bg-gradient-to-r from-primary to-primary/80 rounded-full':
-              !authenticated,
           },
           props.className,
         )}

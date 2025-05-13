@@ -17,9 +17,9 @@ import type { UseChatHelpers } from '@ai-sdk/react';
 function LoadingSkeleton() {
   return (
     <div className="relative w-full flex flex-col gap-4">
-      <div className="min-h-[98px] rounded-2xl bg-muted animate-pulse dark:bg-zinc-800" />
+      <div className="min-h-[98px] rounded-2xl bg-muted dark:bg-card animate-pulse" />
       <div className="absolute bottom-0 right-0 p-2">
-        <div className="w-8 h-8 rounded-full bg-muted animate-pulse dark:bg-zinc-700" />
+        <div className="w-8 h-8 rounded-full bg-muted dark:bg-border animate-pulse" />
       </div>
     </div>
   );
@@ -140,7 +140,7 @@ function PureMultimodalInput({
         value={input}
         onChange={handleInput}
         className={cx(
-          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
+          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted dark:bg-card pb-10 dark:text-foreground dark:border-border',
           className,
         )}
         rows={2}
@@ -192,7 +192,7 @@ function PureStopButton({
   return (
     <Button
       data-testid="stop-button"
-      className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+      className="rounded-full p-1.5 h-fit border dark:border-border dark:bg-card dark:text-foreground dark:hover:bg-border"
       onClick={(event) => {
         event.preventDefault();
         stop();
@@ -216,7 +216,7 @@ function PureSendButton({
   return (
     <Button
       data-testid="send-button"
-      className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
+      className="rounded-full p-1.5 h-fit border dark:border-border dark:bg-primary dark:text-foreground dark:hover:bg-accent"
       onClick={(event) => {
         event.preventDefault();
         submitForm();

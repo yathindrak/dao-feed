@@ -50,41 +50,41 @@ export default async function LeaderboardPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-0">
-      <h1 className="text-3xl font-bold mb-8 text-center text-white">
+      <h1 className="text-3xl font-bold mb-8 text-center text-foreground">
         Live DAO Contributor Leaderboard
       </h1>
       {topUsers.length === 0 ? (
-        <p className="text-center text-gray-500 mt-10">
+        <p className="text-center text-muted-foreground mt-10">
           No user data available to display leaderboard.
         </p>
       ) : noActivity ? (
-        <p className="text-center text-gray-500 mt-10">
+        <p className="text-center text-muted-foreground mt-10">
           No activity to show on the leaderboard yet.
         </p>
       ) : (
-        <div className="overflow-x-auto shadow-2xl rounded-lg">
-          <table className="min-w-full bg-gray-800 rounded-lg">
-            <thead className="bg-gray-700">
+        <div className="overflow-x-auto shadow-2xl rounded-lg max-w-4xl mx-auto">
+          <table className="min-w-full bg-card rounded-lg border border-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                <th className="py-3 px-4 text-left text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Rank
                 </th>
-                <th className="py-3 px-4 text-left text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                <th className="py-3 px-4 text-left text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   User
                 </th>
-                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                <th className="py-3 px-4 text-right text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Votes
                 </th>
-                <th className="py-3 px-4 text-right text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                <th className="py-3 px-4 text-right text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   Proposals
                 </th>
               </tr>
             </thead>
-            <tbody className="text-gray-400 divide-y divide-gray-700">
+            <tbody className="text-muted-foreground divide-y divide-border">
               {topUsers.map((user: LeaderboardUser, index: number) => (
                 <tr
                   key={user.id}
-                  className="hover:bg-gray-700 transition-colors duration-150"
+                  className="hover:bg-muted transition-colors duration-150"
                 >
                   <td className="py-4 px-4 whitespace-nowrap">{index + 1}</td>
                   <td className="py-4 px-4 whitespace-nowrap">

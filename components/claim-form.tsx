@@ -134,12 +134,14 @@ export function ClaimForm({ pool }: ClaimFormProps) {
     if (claimed && claimData) {
       return (
         <div className="mt-4 mb-2">
-          <Alert className="bg-green-900/30 border-green-800">
-            <Badge className="mb-2 bg-green-700">Claimed</Badge>
-            <AlertTitle className="text-green-400">
+          <Alert className="bg-success/20 border-success">
+            <Badge className="mb-2 bg-success text-success-foreground">
+              Claimed
+            </Badge>
+            <AlertTitle className="text-success-foreground">
               {`${Number(claimData.amount).toLocaleString()} ${claimData.currency} Claimed`}
             </AlertTitle>
-            <AlertDescription className="text-sm text-gray-400 mt-1">
+            <AlertDescription className="text-sm text-muted-foreground mt-1">
               Claimed on {format(new Date(claimData.claimedAt), 'MMM d, yyyy')}
             </AlertDescription>
           </Alert>
@@ -150,9 +152,11 @@ export function ClaimForm({ pool }: ClaimFormProps) {
     if (error) {
       return (
         <div className="mt-4 mb-2">
-          <Alert className="bg-red-900/30 border-red-800">
-            <AlertTitle className="text-red-400">Error</AlertTitle>
-            <AlertDescription className="text-sm text-gray-300">
+          <Alert className="bg-destructive/20 border-destructive">
+            <AlertTitle className="text-destructive-foreground">
+              Error
+            </AlertTitle>
+            <AlertDescription className="text-sm text-muted-foreground">
               {error}
             </AlertDescription>
           </Alert>
@@ -164,9 +168,11 @@ export function ClaimForm({ pool }: ClaimFormProps) {
   };
 
   return (
-    <div className="max-w-md mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
+    <div className="max-w-md mx-auto bg-card rounded-lg shadow-lg p-6 border border-border">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-medium">Available Rewards</h2>
+        <h2 className="text-xl font-medium text-card-foreground">
+          Available Rewards
+        </h2>
         <Badge className="px-3 py-1">{monthName}</Badge>
       </div>
 
@@ -174,22 +180,22 @@ export function ClaimForm({ pool }: ClaimFormProps) {
 
       <div className="space-y-4">
         <div className="flex justify-between items-center">
-          <span className="text-gray-400">Pool Amount</span>
-          <span className="font-medium text-lg">
+          <span className="text-muted-foreground">Pool Amount</span>
+          <span className="font-medium text-lg text-card-foreground">
             {`${Number(pool.amount).toLocaleString()} ${pool.currency}`}
           </span>
         </div>
 
         <div className="flex justify-between items-center">
-          <span className="text-gray-400">Your Contribution</span>
-          <span className="font-medium text-lg">
+          <span className="text-muted-foreground">Your Contribution</span>
+          <span className="font-medium text-lg text-card-foreground">
             {loading ? '...' : formattedContribution}
           </span>
         </div>
 
         <div className="flex justify-between items-center">
-          <span className="text-gray-400">Your Reward</span>
-          <span className="font-medium text-xl text-green-400">
+          <span className="text-muted-foreground">Your Reward</span>
+          <span className="font-medium text-xl text-success-foreground">
             {loading ? (
               '...'
             ) : rewardAmount ? (
@@ -226,7 +232,7 @@ export function ClaimForm({ pool }: ClaimFormProps) {
           </Button>
         </div>
 
-        <p className="text-xs text-center text-gray-500 mt-2">
+        <p className="text-xs text-center text-muted-foreground mt-2">
           Rewards are distributed based on your contribution percentage to DAO
           governance
         </p>

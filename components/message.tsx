@@ -213,6 +213,72 @@ const CollapsibleProposalCard = ({
   );
 };
 
+const MessageContent = ({
+  message,
+  isLoading,
+}: { message: UIMessage; isLoading: boolean }) => {
+  return (
+    <>
+      {message.parts?.map((part, index) => {
+        const { type } = part;
+        const key = `message-${message.id}-part-${index}`;
+
+        if (type === 'text') {
+          return (
+            <div key={key} className="flex flex-row gap-2 items-start">
+              <div
+                data-testid="message-content"
+                className="flex flex-col gap-4"
+              >
+                <Markdown>{part.text}</Markdown>
+              </div>
+            </div>
+          );
+        }
+
+        if (type === 'tool-invocation') {
+          const { toolInvocation } = part;
+          const { toolName, toolCallId, state } = toolInvocation;
+
+          if (toolName === 'getWeather') {
+            if (state === 'call') {
+              return (
+                <div key={toolCallId} className="skeleton">
+                  <Weather />
+                </div>
+              );
+            }
+            if (state === 'result') {
+              return (
+                <div key={toolCallId}>
+                  <Weather weatherAtLocation={toolInvocation.result} />
+                </div>
+              );
+            }
+          }
+
+          if (
+            [
+              'get_created_proposals',
+              'get_new_unaddressed_proposals',
+              'get_addressed_proposals',
+            ].includes(toolName.slice(toolName.indexOf('_') + 1)) &&
+            state === 'result'
+          ) {
+            return (
+              <Proposals key={toolCallId} result={toolInvocation.result} />
+            );
+          }
+
+          return (
+            <AgentkitTool key={toolCallId} toolInvocation={toolInvocation} />
+          );
+        }
+      })}
+    </>
+  );
+};
+
 const PurePreviewMessage = ({
   chatId,
   message,
@@ -241,88 +307,33 @@ const PurePreviewMessage = ({
           }
         >
           {message.role === 'assistant' && (
-            <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
+            <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border dark:ring-border bg-background dark:bg-card">
               <div className="translate-y-px">
-                <SparklesIcon size={14} />
+                <SparklesIcon size={14} className="dark:text-foreground" />
               </div>
             </div>
           )}
 
-          <div className="flex flex-col gap-4 w-full">
-            {message.parts?.map((part, index) => {
-              const { type } = part;
-              const key = `message-${message.id}-part-${index}`;
-
-              if (type === 'text') {
-                return (
-                  <div key={key} className="flex flex-row gap-2 items-start">
-                    <div
-                      data-testid="message-content"
-                      className={cn('flex flex-col gap-4', {
-                        'bg-primary text-primary-foreground px-3 py-2 rounded-xl':
-                          message.role === 'user',
-                      })}
-                    >
-                      <Markdown>{part.text}</Markdown>
-                    </div>
-                  </div>
-                );
+          <div className="flex-1 space-y-2 overflow-hidden">
+            <div
+              className={
+                message.role === 'user'
+                  ? 'rounded-xl border px-5 py-3 border-border dark:border-border bg-primary/10 dark:bg-primary/20 text-foreground dark:text-foreground'
+                  : 'rounded-xl border px-5 py-3 border-border dark:border-border bg-background dark:bg-card text-foreground dark:text-foreground'
               }
+            >
+              <MessageContent message={message} isLoading={isLoading} />
+            </div>
 
-              if (type === 'tool-invocation') {
-                const { toolInvocation } = part;
-                const { toolName, toolCallId, state } = toolInvocation;
-
-                if (toolName === 'getWeather') {
-                  if (state === 'call') {
-                    return (
-                      <div key={toolCallId} className="skeleton">
-                        <Weather />
-                      </div>
-                    );
-                  }
-                  if (state === 'result') {
-                    return (
-                      <div key={toolCallId}>
-                        <Weather weatherAtLocation={toolInvocation.result} />
-                      </div>
-                    );
-                  }
-                }
-
-                if (
-                  [
-                    'get_created_proposals',
-                    'get_new_unaddressed_proposals',
-                    'get_addressed_proposals',
-                  ].includes(toolName.slice(toolName.indexOf('_') + 1)) &&
-                  state === 'result'
-                ) {
-                  return (
-                    <Proposals
-                      key={toolCallId}
-                      result={toolInvocation.result}
-                    />
-                  );
-                }
-
-                return (
-                  <AgentkitTool
-                    key={toolCallId}
-                    toolInvocation={toolInvocation}
-                  />
-                );
-              }
-            })}
-
-            {!isReadonly && (
-              <MessageActions
-                key={`action-${message.id}`}
-                chatId={chatId}
-                message={message}
-                vote={vote}
-                isLoading={isLoading}
-              />
+            {!isReadonly && message.role === 'assistant' && (
+              <div className="opacity-0 group-hover/message:opacity-100 transition-opacity ml-auto w-fit">
+                <MessageActions
+                  chatId={chatId}
+                  message={message}
+                  vote={vote}
+                  isLoading={isLoading}
+                />
+              </div>
             )}
           </div>
         </div>
@@ -344,34 +355,25 @@ export const PreviewMessage = memo(
 );
 
 export const ThinkingMessage = () => {
-  const role = 'assistant';
-
   return (
-    <motion.div
-      data-testid="message-assistant-loading"
-      className="w-full mx-auto max-w-3xl px-4 group/message "
-      initial={{ y: 5, opacity: 0 }}
-      animate={{ y: 0, opacity: 1, transition: { delay: 1 } }}
-      data-role={role}
-    >
-      <div
-        className={cx(
-          'flex gap-4 group-data-[role=user]/message:px-3 w-full group-data-[role=user]/message:w-fit group-data-[role=user]/message:ml-auto group-data-[role=user]/message:max-w-2xl group-data-[role=user]/message:py-2 rounded-xl',
-          {
-            'group-data-[role=user]/message:bg-muted': true,
-          },
-        )}
-      >
-        <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border">
-          <SparklesIcon size={14} />
+    <div className="w-full mx-auto max-w-3xl px-4">
+      <div className="flex gap-4 w-full">
+        <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border dark:ring-border bg-background dark:bg-card">
+          <div className="translate-y-px">
+            <SparklesIcon size={14} className="dark:text-foreground" />
+          </div>
         </div>
 
-        <div className="flex flex-col gap-2 w-full">
-          <div className="flex flex-col gap-4 text-muted-foreground">
-            Hmm...
+        <div className="flex-1 space-y-2 overflow-hidden">
+          <div className="rounded-xl border px-5 py-3 border-border dark:border-border bg-background dark:bg-card text-foreground dark:text-foreground">
+            <div className="flex items-center gap-1.5">
+              <div className="size-2 rounded-full animate-pulse bg-foreground dark:bg-foreground" />
+              <div className="size-2 rounded-full animate-pulse bg-foreground dark:bg-foreground animation-delay-200" />
+              <div className="size-2 rounded-full animate-pulse bg-foreground dark:bg-foreground animation-delay-500" />
+            </div>
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 };

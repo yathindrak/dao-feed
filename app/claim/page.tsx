@@ -53,22 +53,24 @@ export default async function ClaimPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-0">
-      <h1 className="text-3xl font-bold mb-2 text-center">
+      <h1 className="text-3xl font-bold mb-2 text-center text-foreground">
         Claim Your DAO Rewards
       </h1>
-      <p className="text-center text-gray-400 mb-8">
+      <p className="text-center text-muted-foreground mb-8">
         Claim your rewards for contributions made in the previous month
       </p>
 
       {hasRewardPool ? (
         <ClaimForm pool={rewardPool[0]} />
       ) : (
-        <div className="max-w-md mx-auto bg-gray-800 rounded-lg shadow-lg p-6 text-center">
-          <h2 className="text-xl font-medium mb-4">No Reward Pool Available</h2>
-          <p className="text-gray-400 mb-4">
+        <div className="max-w-md mx-auto bg-card rounded-lg shadow-lg p-6 text-center border border-border">
+          <h2 className="text-xl font-medium mb-4 text-card-foreground">
+            No Reward Pool Available
+          </h2>
+          <p className="text-muted-foreground mb-4">
             The reward pool for {monthName} has not been set up yet.
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Please check back later. Reward pools are typically set up within
             the first few days of each month.
           </p>
@@ -76,26 +78,28 @@ export default async function ClaimPage() {
       )}
 
       <div className="mt-8 max-w-2xl mx-auto">
-        <h2 className="text-xl font-semibold mb-4">How Rewards Work</h2>
-        <div className="bg-gray-800 rounded-lg p-6">
+        <h2 className="text-xl font-semibold mb-4 text-foreground">
+          How Rewards Work
+        </h2>
+        <div className="bg-card rounded-lg p-6 border border-border">
           <ol className="space-y-4 list-decimal pl-5">
-            <li className="text-gray-300">
+            <li className="text-card-foreground">
               <span className="font-medium">Contribute to DAO governance</span>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Cast votes on proposals and create proposals on Snapshot to earn
                 contribution points.
               </p>
             </li>
-            <li className="text-gray-300">
+            <li className="text-card-foreground">
               <span className="font-medium">Monthly rewards calculation</span>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Your share of the reward pool is calculated based on your
                 contribution percentage compared to all users.
               </p>
             </li>
-            <li className="text-gray-300">
+            <li className="text-card-foreground">
               <span className="font-medium">Claim your rewards</span>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 At the start of each month, you can claim rewards for your
                 contributions from the previous month.
               </p>
