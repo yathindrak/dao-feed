@@ -5,7 +5,6 @@ import postgres from 'postgres';
 import {
   snapshotProposal,
   snapshotVote,
-  snapshotUser,
   snapshotFollow,
   snapshotSpaceMember,
 } from '@/lib/db/schema';

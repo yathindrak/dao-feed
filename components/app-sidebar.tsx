@@ -79,14 +79,16 @@ export function AppSidebar() {
               <BarChartIcon className="mr-2 h-4 w-4" />
               Live Leaderboard
             </Link>
-            <Link
-              href="/claim"
-              onClick={() => setOpenMobile(false)}
-              className="flex items-center px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
-            >
-              <DashboardIcon className="mr-2 h-4 w-4" />
-              Claim Rewards
-            </Link>
+            {authenticated && user && (
+              <Link
+                href="/claim"
+                onClick={() => setOpenMobile(false)}
+                className="flex items-center px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+              >
+                <DashboardIcon className="mr-2 h-4 w-4" />
+                Claim Rewards
+              </Link>
+            )}
           </nav>
         </div>
       </SidebarContent>

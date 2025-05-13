@@ -92,9 +92,9 @@ export const indexActiveProposals = inngest.createFunction(
           .limit(1);
 
         if (state.length === 0) {
-          // If no sync state exists, start from 24 hours ago
+          // If no sync state exists, start from 3 months ago
           const initialLastCreatedAt = new Date(
-            now.getTime() - 24 * 60 * 60 * 1000,
+            now.getTime() - 90 * 24 * 60 * 60 * 1000,
           );
           await db.insert(snapshotSyncState).values({
             id: 'proposals',
