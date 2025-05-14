@@ -152,7 +152,7 @@ export function SidebarHistory({ user }: { user: object | undefined }) {
   if (!user) {
     return (
       <SidebarGroup>
-        <SidebarGroupContent>
+        <SidebarGroupContent className="h-full">
           <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2">
             Login to save and revisit previous chats!
           </div>
@@ -167,7 +167,7 @@ export function SidebarHistory({ user }: { user: object | undefined }) {
         <div className="px-2 py-1 text-xs text-sidebar-foreground/50">
           Today
         </div>
-        <SidebarGroupContent>
+        <SidebarGroupContent className="h-full">
           <div className="flex flex-col">
             {[44, 32, 28, 64, 52].map((item) => (
               <div
@@ -193,7 +193,7 @@ export function SidebarHistory({ user }: { user: object | undefined }) {
   if (hasEmptyChatHistory) {
     return (
       <SidebarGroup>
-        <SidebarGroupContent>
+        <SidebarGroupContent className="h-full">
           <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2">
             Your conversations will appear here once you start chatting!
           </div>

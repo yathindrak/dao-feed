@@ -25,7 +25,7 @@ export default function SignInButton(props: IButton) {
   return (
     <div
       className={clsx(
-        'h-20 flex-wrap md:flex p-4 items-center justify-center w-full',
+        'h-20 flex-wrap md:flex p-4 items-center justify-center w-full gap-2',
         {
           'lg:justify-center': !authenticated,
           'lg:justify-between': authenticated,

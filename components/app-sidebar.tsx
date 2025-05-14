@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { PlusIcon, BarChartIcon, DashboardIcon } from '@radix-ui/react-icons';
 
@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 export function AppSidebar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const { authenticated, login, user } = usePrivy();
 
@@ -64,7 +65,11 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {authenticated && user && <SidebarHistory user={user} />}
+        {authenticated && user && (
+          <div className="h-[75vh] overflow-y-auto">
+            <SidebarHistory user={user} />
+          </div>
+        )}
 
         <div className="mt-4 px-2">
           <div className="text-xs text-gray-500 font-medium mb-2 px-2">
@@ -74,7 +79,7 @@ export function AppSidebar() {
             <Link
               href="/leaderboard"
               onClick={() => setOpenMobile(false)}
-              className="flex items-center px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+              className={`flex items-center px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${pathname === '/leaderboard' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
             >
               <BarChartIcon className="mr-2 h-4 w-4" />
               Live Leaderboard
@@ -83,7 +88,7 @@ export function AppSidebar() {
               <Link
                 href="/claim"
                 onClick={() => setOpenMobile(false)}
-                className="flex items-center px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
+                className={`flex items-center px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors ${pathname === '/claim' ? 'bg-sidebar-accent text-sidebar-accent-foreground' : ''}`}
               >
                 <DashboardIcon className="mr-2 h-4 w-4" />
                 Claim Rewards
