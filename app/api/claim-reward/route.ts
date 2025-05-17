@@ -1,4 +1,4 @@
-import type { NextRequest } from 'next/server';
+mport type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
@@ -11,6 +11,8 @@ import {
 } from '@/lib/db/schema';
 import { type Address, createWalletClient, http, parseEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { ethers } from 'ethers';
+import BuilderTokenArtifact from '../../contracts/DFToken#DFToken.json';
 
 if (!process.env.POSTGRES_URL) {
   throw new Error('POSTGRES_URL environment variable is not set');
@@ -18,6 +20,7 @@ if (!process.env.POSTGRES_URL) {
 
 const privateKey = process.env.REWARD_WALLET_PRIVATE_KEY;
 const rpcUrl = process.env.ALCHEMY_URL;
+const BUILDER_TOKEN_ADDRESS = '0x2c769Ea687483e46876dbC3faD6eaE5B78442F91';
 if (!privateKey || !rpcUrl) {
   throw new Error('Reward wallet not configured');
 }
@@ -36,17 +39,21 @@ async function sendTransaction({
   value: bigint;
   rpcUrl: string;
 }) {
-  const walletClient = createWalletClient({
-    account: privateKeyToAccount(privateKey),
-    transport: http(rpcUrl),
-  });
   try {
-    const hash = await walletClient.sendTransaction({
-      chain: null,
-      to: to,
-      value,
-    });
-    return hash;
+    if (process.env.PRIVATE_KEY) {
+      const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+      const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+      const dfToken = new ethers.Contract(
+        BUILDER_TOKEN_ADDRESS,
+        BuilderTokenArtifact.abi,
+        wallet,
+      );
+
+      // Call the claim function with address and amount
+      const tx = await dfToken.claim(to, value);
+      const receipt = await tx.wait();
+      return receipt.hash;
+    }
   } catch (e: any) {
     if (e?.shortMessage?.includes('Account balance is too low')) {
       throw new Error('Insufficient funds on reward wallet.');
@@ -215,3 +222,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
