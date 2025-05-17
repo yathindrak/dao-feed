@@ -18,6 +18,7 @@ const BATCH_SIZE = 1000;
 
 const MAX_RETRIES = 3;
 const SIX_HOURS = 6 * 60 * 60 * 1000;
+const TEN_MINUTES = 10 * 60 * 1000;
 
 if (!process.env.POSTGRES_URL) {
   console.error('POSTGRES_URL environment variable is not set');
@@ -92,10 +93,10 @@ export const indexActiveProposals = inngest.createFunction(
           .limit(1);
 
         if (state.length === 0) {
-          // If no sync state exists, start from 3 months ago
+          // If no sync state exists, start from April 1st, UTC
           const initialLastCreatedAt = new Date(
-            now.getTime() - 90 * 24 * 60 * 60 * 1000,
-          );
+            Date.UTC(now.getUTCFullYear(), 3, 1, 0, 0, 0, 0),
+          ); // April 1st, UTC
           await db.insert(snapshotSyncState).values({
             id: 'proposals',
             lastSyncedAt: now,
@@ -114,6 +115,7 @@ export const indexActiveProposals = inngest.createFunction(
       let skip = 0;
       let lastCreatedAt = syncState.lastCreatedAt;
       let keepFetching = true;
+      let lastSyncUpdate = Date.now();
 
       while (keepFetching) {
         const newProposalsQuery = `
@@ -283,12 +285,50 @@ export const indexActiveProposals = inngest.createFunction(
               }
             },
           );
+
+          // Update sync state every 10 minutes to allow for recovery from failures
+          const currentTime = Date.now();
+          if (currentTime - lastSyncUpdate > TEN_MINUTES) {
+            await step.run('intermediate-sync-state-update', async () => {
+              await db
+                .update(snapshotSyncState)
+                .set({
+                  lastSyncedAt: new Date(),
+                  lastCreatedAt: new Date(lastCreatedAt),
+                })
+                .where(eq(snapshotSyncState.id, 'proposals'));
+
+              console.log(
+                `Intermediate sync state updated at ${new Date().toISOString()}, lastCreatedAt: ${lastCreatedAt.toISOString()}`,
+              );
+            });
+            lastSyncUpdate = currentTime;
+          }
         }
 
         if (newProposals.length < BATCH_SIZE) {
           keepFetching = false;
         } else {
           skip += BATCH_SIZE;
+
+          // Also update sync state when moving to next batch
+          const currentTime = Date.now();
+          if (currentTime - lastSyncUpdate > TEN_MINUTES) {
+            await step.run(`batch-complete-sync-update-${skip}`, async () => {
+              await db
+                .update(snapshotSyncState)
+                .set({
+                  lastSyncedAt: new Date(),
+                  lastCreatedAt: new Date(lastCreatedAt),
+                })
+                .where(eq(snapshotSyncState.id, 'proposals'));
+
+              console.log(
+                `Batch complete sync state updated at ${new Date().toISOString()}, lastCreatedAt: ${lastCreatedAt.toISOString()}`,
+              );
+            });
+            lastSyncUpdate = currentTime;
+          }
         }
       }
 
@@ -470,27 +510,6 @@ async function updateSpaceData(spaceId: string, now: Date) {
 
     if (allMembers.length > 0) {
       console.log(`All members ${allMembers.length}`);
-      const membersQuery = `
-          query Users {
-            users(
-              where: { id_in: ${JSON.stringify(allMembers)} }
-            ) {
-              id
-              name
-              about
-              avatar
-              farcaster
-              lastVote
-              lens
-              twitter
-            }
-          }
-        `;
-
-      const mems = await queryWithRetries(membersQuery, {});
-      const users = mems?.users || [];
-      console.log('Members data fetched');
-      console.log(`Found ${users.length} members`);
 
       // TODO: Make below and update users a transaction if possible
       // First mark all existing active members as inactive before update
@@ -507,25 +526,20 @@ async function updateSpaceData(spaceId: string, now: Date) {
           ),
         );
       console.log(`Marked ${allMembers.length} active members as inactive`);
-      for (const user of users) {
-        console.log(`Updating user ${user.id}`);
+
+      // Insert or update users and their memberships
+      for (const userId of allMembers) {
+        console.log(`Updating user ${userId}`);
         // Update user
         await db
           .insert(snapshotUser)
           .values({
-            ...user,
+            id: userId,
             lastIndexedAt: now,
           })
           .onConflictDoUpdate({
             target: snapshotUser.id,
             set: {
-              name: user.name,
-              about: user.about,
-              avatar: user.avatar,
-              farcaster: user.farcaster,
-              lastVote: user.lastVote,
-              lens: user.lens,
-              twitter: user.twitter,
               lastIndexedAt: now,
             },
           });
@@ -535,7 +549,7 @@ async function updateSpaceData(spaceId: string, now: Date) {
           .insert(snapshotSpaceMember)
           .values({
             spaceId: spaceData.space.id,
-            memberId: user.id,
+            memberId: userId,
             addedAt: now,
             isActive: true,
             removedAt: null,
